@@ -1,0 +1,283 @@
+{
+  "name": "Portfolio Tracker",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        2880,
+        400
+      ],
+      "id": "b8022e75-8722-4fdc-8d5f-03f64228efe4",
+      "name": "Run Daily at 12 AM"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "11QjmbZX0vrJjyXRvcAAvACKNwcDHAv6YoyLRmLnjhvA",
+          "mode": "list",
+          "cachedResultName": "Database",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/11QjmbZX0vrJjyXRvcAAvACKNwcDHAv6YoyLRmLnjhvA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/11QjmbZX0vrJjyXRvcAAvACKNwcDHAv6YoyLRmLnjhvA/edit#gid=0"
+        },
+        "options": {
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "specifyRangeA1",
+              "range": "A:C"
+            }
+          },
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "FORMATTED_STRING"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        3104,
+        400
+      ],
+      "id": "5517a636-adc1-4039-ad4d-e20b991eac61",
+      "name": "Read Holdings (Database)",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "JW46BZxUmbAf3SXH",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bc7233cb-91ad-426f-9422-bd820c77ab03",
+              "name": "coinIds",
+              "value": "={{ $items().map(item => item.json['CoinGecko ID']).join(',') }}",
+              "type": "string"
+            },
+            {
+              "id": "19bcbd45-dd39-4b50-aa97-2475f7f57bb9",
+              "name": "holdingData",
+              "value": "={{ JSON.stringify($items().map(item => item.json)) }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3328,
+        400
+      ],
+      "id": "33009f8e-d179-464d-8922-1fb2e0180f1e",
+      "name": "Prepare Data"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        3552,
+        400
+      ],
+      "id": "df81d38e-cfa4-437a-88b1-f5ba2132a4f6",
+      "name": "Consolidate to 1 Item"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the output from the \"Limit\" node\nconst inputData = $items(\"Consolidate to 1 Item\")[0].json;\nconst coinIds = inputData.coinIds;\nconst holdings = inputData.holdingData;\n\nconsole.log('=== DEBUG INFO ===');\nconsole.log('coinIds:', coinIds);\nconsole.log('holdings type:', typeof holdings);\nconsole.log('holdings is array:', Array.isArray(holdings));\nconsole.log('holdings length:', holdings ? holdings.length : 'null');\nconsole.log('holdings sample:', holdings ? holdings[0] : 'null');\n\n// --- 1. CALL THE API TO GET PRICES ---\nconst url = `https://api.coingecko.com/api/v3/simple/price?ids=${coinIds}&vs_currencies=usd&precision=full`;\n\nconsole.log('⚠️ Using free CoinGecko API - prices may be cached/delayed. For real-time prices, use CoinGecko Pro API.');\n\nconst prices = await this.helpers.httpRequest({\n  url: url,\n  method: 'GET',\n  json: true\n});\n\nconsole.log('API Response:', JSON.stringify(prices, null, 2));\n\n// --- 2. CALCULATE THE TOTAL ---\nlet total = 0;\nconst calculations = [];\n\nif (holdings && Array.isArray(holdings)) {\n  for (const coin of holdings) {\n    const coinId = coin['CoinGecko ID'] ? coin['CoinGecko ID'].trim() : null;\n    const amount = parseFloat(coin.Qty);\n    const price = prices[coinId] ? prices[coinId].usd : null;\n    \n    console.log(`Processing: ${coin['Coin Name']} | ID: ${coinId} | Qty: ${amount} | Price: ${price}`);\n    \n    if (coinId && prices[coinId] && prices[coinId].usd && !isNaN(amount)) {\n      const value = prices[coinId].usd * amount;\n      total += value;\n      calculations.push({\n        coin: coin['Coin Name'],\n        id: coinId,\n        qty: amount,\n        price: prices[coinId].usd,\n        value: value\n      });\n      console.log(`  ✓ Added ${value} to total`);\n    } else {\n      console.log(`  ✗ Skipped - Missing data`);\n    }\n  }\n}\n\nconsole.log('Final total:', total);\nconsole.log('Calculations:', JSON.stringify(calculations, null, 2));\n\n// --- 3. RETURN THE FINAL DATA ---\nconst now = new Date();\nconst date = now.toISOString().split('T')[0];\nconst time = now.toTimeString().split(' ')[0];\n\nreturn {\n  date: date,\n  time: time,\n  Value: total,\n  calculations: calculations\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3776,
+        400
+      ],
+      "id": "d580f729-4d99-46fc-baa8-88048851c1c3",
+      "name": "Get Prices & Calculate Total"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1plks_9O0oK4bslfEfMzhAgxhaZgNjQn8PII1FDv80LQ",
+          "mode": "list",
+          "cachedResultName": "Portfolio Tracker",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1plks_9O0oK4bslfEfMzhAgxhaZgNjQn8PII1FDv80LQ/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1plks_9O0oK4bslfEfMzhAgxhaZgNjQn8PII1FDv80LQ/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "date",
+              "displayName": "date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "time",
+              "displayName": "time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "value",
+              "displayName": "value",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Value",
+              "displayName": "Value",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "calculations",
+              "displayName": "calculations",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        3984,
+        400
+      ],
+      "id": "05661fdb-9b42-41d9-b051-ebae00761bee",
+      "name": "Save to Tracker Sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "JW46BZxUmbAf3SXH",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Run Daily at 12 AM": {
+      "main": [
+        [
+          {
+            "node": "Read Holdings (Database)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Holdings (Database)": {
+      "main": [
+        [
+          {
+            "node": "Prepare Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Data": {
+      "main": [
+        [
+          {
+            "node": "Consolidate to 1 Item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consolidate to 1 Item": {
+      "main": [
+        [
+          {
+            "node": "Get Prices & Calculate Total",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Prices & Calculate Total": {
+      "main": [
+        [
+          {
+            "node": "Save to Tracker Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "eee073e3-bfef-43fa-b282-f791e7e4a98e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2d1541f7c519c30f4dc10b25cc5bb9d24de564e1798c8ff778070cbe40f1329e"
+  },
+  "id": "2VhpFn77fI9d1e2R",
+  "tags": []
+}

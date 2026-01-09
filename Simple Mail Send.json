@@ -1,0 +1,195 @@
+{
+  "name": "Simple Mail Send",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "36947057-4ede-4553-811e-8d7070247894",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1fGJw33GGbhZrxWJNO6HksHP5gVaN29mxDv92XuMG1AI",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Email Sent To": "={{ $json.recipientEmail }}",
+            "Email Body": "={{ $json.body }}",
+            "Subject Line": "={{ $json.subject }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Email Sent To",
+              "displayName": "Email Sent To",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Subject Line",
+              "displayName": "Subject Line",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Email Body",
+              "displayName": "Email Body",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        416,
+        0
+      ],
+      "id": "7cc1bb57-1a7a-4645-bceb-d44c33e067af",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "JW46BZxUmbAf3SXH",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Edit Fields').item.json.recipientEmail }}",
+        "subject": "={{ $('Edit Fields').item.json.subject }}",
+        "emailType": "text",
+        "message": "={{ $('Edit Fields').item.json.body }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        624,
+        0
+      ],
+      "id": "385a09a4-1347-4d1a-be78-51b0c430e6e6",
+      "name": "Send a message",
+      "webhookId": "72866102-33d2-43da-8f4f-e6724635d8ad",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "DSOkxdXHh61BQLdn",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2fd3ace8-867c-401e-9c6a-da1f04b626d8",
+              "name": "recipientEmail",
+              "value": "asadshafique0331@gmail.com",
+              "type": "string"
+            },
+            {
+              "id": "80fae4e6-1cba-4902-a56a-b7e6446fa307",
+              "name": "subject",
+              "value": "Come",
+              "type": "string"
+            },
+            {
+              "id": "195bfb34-7959-4e0b-ad00-1a164875285f",
+              "name": "body",
+              "value": "Fuck u baby doll",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "e1933450-013d-4570-95af-9a8aefa29dbc",
+      "name": "Edit Fields"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "0403ab6f-029e-4ebf-ba20-6d5bcc2ea723",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2d1541f7c519c30f4dc10b25cc5bb9d24de564e1798c8ff778070cbe40f1329e"
+  },
+  "id": "eKNFDBeB0E3a3agt",
+  "tags": []
+}

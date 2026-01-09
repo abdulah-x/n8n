@@ -1,0 +1,217 @@
+{
+  "name": "The Oracle",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Any Topic",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "topic"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.3,
+      "position": [
+        -96,
+        16
+      ],
+      "id": "c992a571-56e6-4efb-9f8b-4682fb5bd7a9",
+      "name": "User Input Form",
+      "webhookId": "05f8d55f-b39d-445c-9922-622c118b2e3b"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        160,
+        192
+      ],
+      "id": "62018513-d831-46d0-811f-51c5e37bab4b",
+      "name": "AI Brain",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "HGb0IdtPb8kA5Szn",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a helpful assistant. Write a short, professional, and engaging email about this topic: {{ $json.topic }}\n\nIMPORTANT: Write the response in **raw HTML format**.\n1. Use <b> for bolding key terms (do not use asterisks **).\n2. Use <br> for line breaks between paragraphs.\n3. Use <ul> and <li> for lists.\n4. Do NOT wrap the output in markdown code blocks (like ```html). Just return the raw HTML string so it renders correctly.",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        160,
+        16
+      ],
+      "id": "efda193c-337e-443d-b7d3-395f8043965f",
+      "name": "Write Email Content"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1fGJw33GGbhZrxWJNO6HksHP5gVaN29mxDv92XuMG1AI",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Email Sent To": "=abdullah.asad2001@gmail.com",
+            "Email Body": "={{ $json.text }}",
+            "Subject Line": "={{ $('User Input Form').item.json.topic }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Email Sent To",
+              "displayName": "Email Sent To",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Subject Line",
+              "displayName": "Subject Line",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Email Body",
+              "displayName": "Email Body",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        496,
+        16
+      ],
+      "id": "aca14b9e-7d51-443b-83cd-76fd935cb347",
+      "name": "Log History to DB",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "QhNrRWMQHd3r9gGc",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "=abdullah.asad2001@gmail.com",
+        "subject": "={{ $('User Input Form').item.json.topic }}",
+        "message": "={{ $('Write Email Content').item.json.text }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        720,
+        16
+      ],
+      "id": "6ceead2a-fd04-46d4-aa07-24ae71f36a37",
+      "name": "Send Briefing to Me",
+      "webhookId": "72866102-33d2-43da-8f4f-e6724635d8ad",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "CqW1XaA9PPgPsKID",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "User Input Form": {
+      "main": [
+        [
+          {
+            "node": "Write Email Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Brain": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Write Email Content",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Email Content": {
+      "main": [
+        [
+          {
+            "node": "Log History to DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log History to DB": {
+      "main": [
+        [
+          {
+            "node": "Send Briefing to Me",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "891f5a53-3133-4da9-967d-fa0f9b1671cf",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f3c5bf4279926766189572b2a6be8ba3e68951b8e9b4352e9143e8d9a3883ebc"
+  },
+  "id": "jSj0yRjfcusDx2z8",
+  "tags": []
+}

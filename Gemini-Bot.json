@@ -1,0 +1,103 @@
+{
+  "name": "Gemini-Bot",
+  "nodes": [
+    {
+      "parameters": {
+        "public": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -368,
+        -96
+      ],
+      "id": "f53c25a6-c475-4bdf-881a-152dc56f8602",
+      "name": "When chat message received",
+      "webhookId": "b9da0d35-b59b-4e92-bfb7-c84fe3a65f7c"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        -160,
+        -96
+      ],
+      "id": "7e6eaac9-6fbd-4de6-8104-80ad8962029c",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -272,
+        128
+      ],
+      "id": "ce632a18-3c4b-4442-8959-ae5e0066af3a",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "TxuHcBdORwfW8xvR",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "# **GEMINI BOT**\n\n",
+        "height": 80,
+        "width": 224
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -512,
+        -192
+      ],
+      "id": "a0a2ccb2-f8eb-464a-825e-19378bdbf046",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "7524e003-2f4d-4a08-8780-18a5238e0ba2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2d1541f7c519c30f4dc10b25cc5bb9d24de564e1798c8ff778070cbe40f1329e"
+  },
+  "id": "1So9Z1xSQ0xuQLH7",
+  "tags": []
+}

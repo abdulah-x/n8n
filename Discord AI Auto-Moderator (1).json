@@ -1,0 +1,379 @@
+{
+  "name": "Discord AI Auto-Moderator",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 10
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -208,
+        -64
+      ],
+      "id": "763e65a9-8b83-4279-a381-486ece890c4d",
+      "name": "Run Every 10 Minutes"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "getAll",
+        "guildId": {
+          "__rl": true,
+          "value": "1439232362641883199",
+          "mode": "list",
+          "cachedResultName": "n8n Testing Server",
+          "cachedResultUrl": "https://discord.com/channels/1439232362641883199"
+        },
+        "channelId": {
+          "__rl": true,
+          "value": "1439232363296198750",
+          "mode": "list",
+          "cachedResultName": "general",
+          "cachedResultUrl": "https://discord.com/channels/1439232362641883199/1439232363296198750"
+        },
+        "limit": 10,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        0,
+        -64
+      ],
+      "id": "6eda3a92-63ca-4fb6-97b8-5f0d453a5dbf",
+      "name": "Fetch Recent Chat",
+      "webhookId": "c11a2302-ab39-4b69-aa42-c03ec8e4d47c",
+      "credentials": {
+        "discordBotApi": {
+          "id": "LPXVHFwFIjCRLOpL",
+          "name": "Discord Bot account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"comment\": { \"text\": \"{{ $json.content }}\" },\n  \"languages\": [\"en\"],\n  \"requestedAttributes\": { \n    \"TOXICITY\": {},\n    \"SEVERE_TOXICITY\": {},\n    \"THREAT\": {}\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        288,
+        -208
+      ],
+      "id": "dcf60651-1bf0-4c31-a15f-6c1818179de7",
+      "name": "Score Toxicity (Google API)",
+      "alwaysOutputData": false,
+      "executeOnce": false,
+      "notesInFlow": false,
+      "retryOnFail": false,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        800,
+        -208
+      ],
+      "id": "cac506b1-8541-4b41-b68c-e2b9bc5d9e3f",
+      "name": "Combine Message + Score"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "deleteMessage",
+        "guildId": {
+          "__rl": true,
+          "value": "1439232362641883199",
+          "mode": "list",
+          "cachedResultName": "n8n Testing Server",
+          "cachedResultUrl": "https://discord.com/channels/1439232362641883199"
+        },
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $json.channel_id }}",
+          "mode": "id"
+        },
+        "messageId": "={{ $json.id }}"
+      },
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        1504,
+        -224
+      ],
+      "id": "187e7706-31ac-4370-8877-17dbea911699",
+      "name": "Delete Original Message",
+      "webhookId": "01d5b84f-2e71-4b0b-a718-8d7151d8c6af",
+      "credentials": {
+        "discordBotApi": {
+          "id": "LPXVHFwFIjCRLOpL",
+          "name": "Discord Bot account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## ***🤖 Discord AI Auto-Moderator***\n\n#### **Workflow Process**\n* **Trigger:** Runs on a schedule (e.g., every 10 minutes).\n* **Fetch:** Grabs recent messages from the public chat.\n* **Analyze:** Sends each message to the **Google Perspective API** to score for:\n    * `TOXICITY`\n    * `SEVERE_TOXICITY`\n    * `THREAT`\n* **Combine:** Merges the original message (author, ID) with its new **AI scores**.\n\n---\n\n#### **Moderation Logic**\n* **Check:** Does the message meet **ANY** of these flags?\n    * `Toxicity` > **0.8**\n    * `Severe Toxicity` > **0.7**\n    * `Threat` > **0.6**\n\n* ✅ **If TRUE (Message Flagged):**\n    1.  **Alert:** Sends a full report (with all 3 scores) to `#admin-log`.\n    2.  **Delete:** Removes the original message from the public channel.\n\n* ❌ **If FALSE (Message Clean):**\n    * Stops and does nothing.\n\n---\n\n#### 🚨 **Error Handling**\n* If the **Google API fails**, a separate alert is sent to `#admin-log` so you know the bot is having issues",
+        "height": 544,
+        "width": 544,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        416,
+        112
+      ],
+      "id": "0d0eb8e4-b55a-44ea-a0de-6b1cc74683ca",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d5064023-d9fd-444b-b4f9-69a7c4d5913b",
+              "leftValue": "={{ $json.attributeScores.TOXICITY.summaryScore.value }}",
+              "rightValue": 0.8,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            },
+            {
+              "id": "2351474a-73a7-4b53-8d4b-44f990133b44",
+              "leftValue": "={{ $json.attributeScores.SEVERE_TOXICITY.summaryScore.value }}",
+              "rightValue": 0.7,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            },
+            {
+              "id": "3cc21be7-c00f-483b-bc66-6eefcff89c76",
+              "leftValue": "={{ $json.attributeScores.THREAT.summaryScore.value }}",
+              "rightValue": 0.6,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1008,
+        -208
+      ],
+      "id": "807d0420-cd8b-4693-8432-cd664c566365",
+      "name": "Is Toxic, Severe, or Threat?"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "guildId": {
+          "__rl": true,
+          "value": "1439232362641883199",
+          "mode": "list",
+          "cachedResultName": "n8n Testing Server",
+          "cachedResultUrl": "https://discord.com/channels/1439232362641883199"
+        },
+        "channelId": {
+          "__rl": true,
+          "value": "1439249409077415947",
+          "mode": "list",
+          "cachedResultName": "admin-log",
+          "cachedResultUrl": "https://discord.com/channels/1439232362641883199/1439249409077415947"
+        },
+        "content": "🚨 **WORKFLOW ERROR** 🚨\n\nThe **Discord AI Auto-Moderator** workflow is failing. The **Google Perspective API** returned an error. Please check the n8n logs for details!",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        528,
+        -400
+      ],
+      "id": "2d6021f6-c337-4ea1-8f2b-d7340e29ddd1",
+      "name": "Report API Failure",
+      "webhookId": "03a06e60-0067-4ec7-9913-baef52f958e1",
+      "credentials": {
+        "discordBotApi": {
+          "id": "LPXVHFwFIjCRLOpL",
+          "name": "Discord Bot account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "guildId": {
+          "__rl": true,
+          "value": "1439232362641883199",
+          "mode": "list",
+          "cachedResultName": "n8n Testing Server",
+          "cachedResultUrl": "https://discord.com/channels/1439232362641883199"
+        },
+        "channelId": {
+          "__rl": true,
+          "value": "1439249409077415947",
+          "mode": "list",
+          "cachedResultName": "admin-log",
+          "cachedResultUrl": "https://discord.com/channels/1439232362641883199/1439249409077415947"
+        },
+        "content": "=🚩 **High-Risk Message Flagged** 🚩\n\n**Author:** {{ $json.author.username }}\n**Channel:** <#{{ $json.channel_id }}>\n\n**Scores:**\n* Toxicity: {{ $json.attributeScores.TOXICITY.summaryScore.value.toFixed(2) }}\n* Severe: {{ $json.attributeScores.SEVERE_TOXICITY.summaryScore.value.toFixed(2) }}\n* Threat: {{ $json.attributeScores.THREAT.summaryScore.value.toFixed(2) }}\n\n**Message:**\n> {{ $json.content }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        1264,
+        -224
+      ],
+      "id": "9b841668-7244-424b-8058-bbad9b6b8e45",
+      "name": "Report Toxic Message",
+      "webhookId": "eb106ed1-a0c0-495b-992d-bbb3b6fbb2fb",
+      "credentials": {
+        "discordBotApi": {
+          "id": "LPXVHFwFIjCRLOpL",
+          "name": "Discord Bot account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Score Toxicity (Google API)": [
+      {
+        "json": {
+          "name": "First item",
+          "code": 1
+        }
+      },
+      {
+        "json": {
+          "name": "Second item",
+          "code": 2
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Run Every 10 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Fetch Recent Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Recent Chat": {
+      "main": [
+        [
+          {
+            "node": "Score Toxicity (Google API)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Combine Message + Score",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Score Toxicity (Google API)": {
+      "main": [
+        [
+          {
+            "node": "Combine Message + Score",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Report API Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine Message + Score": {
+      "main": [
+        [
+          {
+            "node": "Is Toxic, Severe, or Threat?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Toxic, Severe, or Threat?": {
+      "main": [
+        [
+          {
+            "node": "Report Toxic Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Report Toxic Message": {
+      "main": [
+        [
+          {
+            "node": "Delete Original Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "6b9d88b6-e7ec-4da2-855c-14c5352b30e7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2d1541f7c519c30f4dc10b25cc5bb9d24de564e1798c8ff778070cbe40f1329e"
+  },
+  "id": "at4apAGgLZ4Ac4rA",
+  "tags": []
+}
