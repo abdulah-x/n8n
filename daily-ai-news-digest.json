@@ -1,0 +1,1183 @@
+{
+  "name": "Daily AI News Digest",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 6
+            }
+          ]
+        }
+      },
+      "id": "trigger1",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -320,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://techcrunch.com/category/artificial-intelligence/feed/",
+        "options": {}
+      },
+      "id": "rss1",
+      "name": "RSS - TechCrunch AI",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        1600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://venturebeat.com/category/ai/feed/",
+        "options": {}
+      },
+      "id": "rss2",
+      "name": "RSS - VentureBeat AI",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        1600,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml",
+        "options": {}
+      },
+      "id": "rss3",
+      "name": "RSS - The Verge AI",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        1600,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://www.technologyreview.com/feed/",
+        "options": {}
+      },
+      "id": "rss4",
+      "name": "RSS - MIT Tech Review",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        1600,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://blog.google/technology/ai/rss/",
+        "options": {}
+      },
+      "id": "rss5",
+      "name": "RSS - Google AI Blog",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        1600,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://openai.com/news/rss.xml",
+        "options": {}
+      },
+      "id": "rss6",
+      "name": "RSS - OpenAI News",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        1600,
+        1008
+      ]
+    },
+    {
+      "parameters": {
+        "numberInputs": 8
+      },
+      "id": "merge1",
+      "name": "Merge All Sources",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2784,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "1",
+              "leftValue": "={{ $json.isoDate || $json.pubDate }}",
+              "rightValue": "={{ $now.minus({ hours: 24 }).toISO() }}",
+              "operator": {
+                "type": "dateTime",
+                "operation": "after"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter24h",
+      "name": "Filter - Last 24h",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        3104,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_GOOGLE_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Ai News Pref"
+        },
+        "options": {}
+      },
+      "id": "readPrefs",
+      "name": "Read AI News Prefs",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        32,
+        512
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets - AI News Digest"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const out = [];\nfor (const item of $input.all()) {\n  const row = item.json;\n  const pos = (row.Prioritize || row.prioritize || '').toString();\n  const neg = (row.Deprioritize || row.deprioritize || '').toString();\n  for (const t of pos.split(',').map(s => s.trim()).filter(Boolean)) {\n    out.push({ json: { text: t, weight: 1 } });\n  }\n  for (const t of neg.split(',').map(s => s.trim()).filter(Boolean)) {\n    out.push({ json: { text: t, weight: -1 } });\n  }\n}\nif (out.length === 0) {\n  out.push({ json: { text: 'general AI news', weight: 0 } });\n}\nreturn out;"
+      },
+      "id": "flattenPrefs",
+      "name": "Flatten Prefs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        352,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googlePalmApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { model: \"models/gemini-embedding-001\", content: { parts: [ { text: $json.text } ] }, outputDimensionality: 768 } }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 13000
+            }
+          }
+        }
+      },
+      "id": "embedPref",
+      "name": "Embed Pref (Gemini)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        672,
+        512
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 15000,
+      "credentials": {
+        "googlePalmApi": {
+          "name": "Google Gemini - AI News Digest"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const flat = $('Flatten Prefs').all();\nconst embedded = $input.all();\nconst prefVectors = embedded.map((item, i) => ({\n  vector: item.json.embedding.values,\n  weight: flat[i].json.weight,\n  text: flat[i].json.text\n}));\nreturn [{ json: { prefVectors } }];"
+      },
+      "id": "collectPrefs",
+      "name": "Collect Prefs Embeddings",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "sourceName",
+              "type": "string",
+              "value": "TechCrunch"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "tag1",
+      "name": "Tag Source - TechCrunch",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1920,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "sourceName",
+              "type": "string",
+              "value": "VentureBeat"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "tag2",
+      "name": "Tag Source - VentureBeat",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1920,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "sourceName",
+              "type": "string",
+              "value": "The Verge"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "tag3",
+      "name": "Tag Source - The Verge",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1920,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "sourceName",
+              "type": "string",
+              "value": "MIT Technology Review"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "tag4",
+      "name": "Tag Source - MIT Tech Review",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1920,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "sourceName",
+              "type": "string",
+              "value": "Google AI Blog"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "tag5",
+      "name": "Tag Source - Google AI",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1920,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "sourceName",
+              "type": "string",
+              "value": "OpenAI"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "tag6",
+      "name": "Tag Source - OpenAI",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1920,
+        1008
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googlePalmApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { model: \"models/gemini-embedding-001\", content: { parts: [ { text: $json.title + '. ' + ($json.contentSnippet || $json.content || '') } ] }, outputDimensionality: 768 } }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 13000
+            }
+          }
+        }
+      },
+      "id": "embedArticle",
+      "name": "Embed Article (Gemini)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        3424,
+        608
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 15000,
+      "credentials": {
+        "googlePalmApi": {
+          "name": "Google Gemini - AI News Digest"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR-PINECONE-INDEX-HOST.pinecone.io/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "pineconeApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { namespace: \"sent-articles\", vector: $json.embedding.values, topK: 1, includeMetadata: false } }}",
+        "options": {}
+      },
+      "id": "pineconeDedupQuery",
+      "name": "Check Semantic Dedup",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        3744,
+        608
+      ],
+      "credentials": {
+        "pineconeApi": {
+          "name": "Pinecone - AI News Digest"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const original = $('Filter - Last 24h').item.json;\nconst articleVector = $('Embed Article (Gemini)').item.json.embedding.values;\nconst matches = $json.matches || [];\nconst dedupScore = matches.length ? matches[0].score : 0;\n\nconst prefVectors = $('Collect Prefs Embeddings').first().json.prefVectors;\nfunction cosine(a, b) {\n  let dot = 0, na = 0, nb = 0;\n  for (let i = 0; i < a.length; i++) {\n    dot += a[i] * b[i];\n    na += a[i] * a[i];\n    nb += b[i] * b[i];\n  }\n  return dot / (Math.sqrt(na) * Math.sqrt(nb) || 1);\n}\nlet prefScore = 0;\nfor (const p of prefVectors) {\n  prefScore += cosine(articleVector, p.vector) * p.weight;\n}\n\nreturn {\n  json: {\n    title: original.title,\n    link: original.link,\n    sourceName: original.sourceName,\n    pubDate: original.isoDate || original.pubDate,\n    contentSnippet: original.contentSnippet || original.content || '',\n    articleVector,\n    dedupScore,\n    prefScore\n  }\n};"
+      },
+      "id": "scoreMerge",
+      "name": "Score & Merge",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4064,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "1",
+              "leftValue": "={{ $json.dedupScore }}",
+              "rightValue": 0.92,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filterNotDup",
+      "name": "Filter - Not Duplicate",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        4384,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "sortFieldsUi": {
+          "sortField": [
+            {
+              "fieldName": "prefScore",
+              "order": "descending"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sortRelevance",
+      "name": "Sort by Relevance",
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
+      "position": [
+        4704,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "maxItems": 8
+      },
+      "id": "limitTop",
+      "name": "Limit Top Stories",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        5024,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $json.items;\nconst today = new Date().toISOString().slice(0,10);\n\nfunction escapeHtml(s) {\n  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');\n}\n\nlet bodyInner;\nif (!items.length) {\n  bodyInner = '<div style=\"text-align:center; padding:40px 20px; color:#6b7280; font-size:14px;\">No notable AI news cleared the bar today. Check back tomorrow.</div>';\n} else {\n  bodyInner = items.map((it, i) => `\n    <div style=\"margin-top:20px; padding-bottom:18px; border-bottom:1px solid #eef0f4;\">\n      <span style=\"display:inline-block; background:#eef2ff; color:#4f46e5; font-size:11px; font-weight:600; padding:3px 10px; border-radius:999px; margin-bottom:8px;\">${escapeHtml(it.source)}</span>\n      <div style=\"font-size:16px; font-weight:700; color:#111827; margin:4px 0 6px 0; line-height:1.4;\">${i+1}. ${escapeHtml(it.title)}</div>\n      <div style=\"font-size:14px; color:#374151; line-height:1.6; margin-bottom:8px;\">${escapeHtml(it.summary)}</div>\n      <a href=\"${it.link}\" style=\"font-size:13px; color:#4f46e5; text-decoration:none; font-weight:600;\">Read more &rarr;</a>\n    </div>\n  `).join('');\n}\n\nconst html = `\n<div style=\"font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; max-width:600px; margin:0 auto; background:#f5f6fa; padding:24px;\">\n  <div style=\"background:linear-gradient(135deg,#4f46e5,#7c3aed); border-radius:12px 12px 0 0; padding:24px 28px;\">\n    <div style=\"color:#ffffff; font-size:22px; font-weight:700;\">AI News Digest</div>\n    <div style=\"color:#e0d9fb; font-size:13px; margin-top:4px;\">${today}</div>\n  </div>\n  <div style=\"background:#ffffff; border-radius:0 0 12px 12px; padding:8px 28px 24px 28px; box-shadow:0 1px 3px rgba(0,0,0,0.08);\">\n    ${bodyInner}\n  </div>\n  <div style=\"text-align:center; color:#9ca3af; font-size:11px; margin-top:16px;\">Sent automatically by your n8n AI News Digest workflow</div>\n</div>`;\n\nconst subject = items.length ? `AI News Digest - ${today}` : `AI News Digest - ${today} - Nothing notable today`;\n\nreturn [{ json: { subject, html } }];"
+      },
+      "id": "formatDigest",
+      "name": "Format Digest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6736,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "YOUR_EMAIL@gmail.com",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.html }}",
+        "options": {}
+      },
+      "id": "gmailSend",
+      "name": "Send Digest Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        7056,
+        576
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "name": "Gmail - AI News Digest"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $('Parse Digest Items').first().json.items;\nreturn items.map(it => ({ json: it }));"
+      },
+      "id": "prepareLog",
+      "name": "Prepare Sent Log Items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        7728,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR-PINECONE-INDEX-HOST.pinecone.io/vectors/upsert",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "pineconeApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { namespace: \"sent-articles\", vectors: [ { id: $json.link, values: $json.articleVector, metadata: { title: $json.title, source: $json.source, link: $json.link, date: $now.toISO() } } ] } }}",
+        "options": {}
+      },
+      "id": "pineconeUpsert",
+      "name": "Upsert Sent Articles (Pinecone)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        8048,
+        432
+      ],
+      "credentials": {
+        "pineconeApi": {
+          "name": "Pinecone - AI News Digest"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_GOOGLE_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Sent Articles"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "URL": "={{ $json.link }}",
+            "Date": "={{ $now.toISODate() }}",
+            "Source": "={{ $json.source }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "sheetsAppend",
+      "name": "Append to Sent Articles Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        8048,
+        672
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets - AI News Digest"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://www.technologyreview.com/topic/artificial-intelligence/feed",
+        "options": {}
+      },
+      "id": "rss7",
+      "name": "RSS - MIT Algorithm",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        1600,
+        1200
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "sourceName",
+              "type": "string",
+              "value": "MIT Technology Review (The Algorithm)"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "tag7",
+      "name": "Tag Source - MIT Algorithm",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1920,
+        1200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const stories = $input.all().map(i => i.json);\nconst articlesText = stories.map((s, i) => `${i+1}. Title: ${s.title}\\nSnippet: ${s.contentSnippet}`).join('\\n\\n');\nreturn [{ json: { stories, articlesText } }];"
+      },
+      "id": "aggregateTop",
+      "name": "Aggregate Top Stories",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5536,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googlePalmApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { contents: [ { parts: [ { text: \"You are writing a daily AI news digest. For each article below, write one punchy, factual 1-2 sentence summary naming the organization/people and what happened. Do not restate the title verbatim or mention the source name in the summary text.\\n\\nReturn ONLY a JSON array of strings, one summary per article, in the exact same order as the articles below. No markdown, no other text.\\n\\nArticles:\\n\" + $json.articlesText } ] } ], generationConfig: { responseMimeType: \"application/json\" } } }}",
+        "options": {}
+      },
+      "id": "batchSummarize",
+      "name": "Batch Summarize (Gemini)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        5856,
+        576
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googlePalmApi": {
+          "name": "Google Gemini - AI News Digest"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const stories = $('Aggregate Top Stories').first().json.stories;\nconst raw = $json.candidates[0].content.parts[0].text;\nlet summaries;\ntry {\n  summaries = JSON.parse(raw);\n} catch (e) {\n  summaries = stories.map(() => raw.trim());\n}\nconst items = stories.map((s, i) => ({\n  title: s.title,\n  summary: (summaries[i] || s.contentSnippet || '').toString().trim(),\n  link: s.link,\n  source: s.sourceName,\n  articleVector: s.articleVector\n}));\nreturn [{ json: { items } }];"
+      },
+      "id": "parseDigest",
+      "name": "Parse Digest Items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6176,
+        576
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Read AI News Prefs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge All Sources": {
+      "main": [
+        [
+          {
+            "node": "Filter - Last 24h",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read AI News Prefs": {
+      "main": [
+        [
+          {
+            "node": "Flatten Prefs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flatten Prefs": {
+      "main": [
+        [
+          {
+            "node": "Embed Pref (Gemini)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed Pref (Gemini)": {
+      "main": [
+        [
+          {
+            "node": "Collect Prefs Embeddings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Prefs Embeddings": {
+      "main": [
+        [
+          {
+            "node": "RSS - TechCrunch AI",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS - VentureBeat AI",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS - The Verge AI",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS - MIT Tech Review",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS - Google AI Blog",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS - OpenAI News",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS - MIT Algorithm",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS - TechCrunch AI": {
+      "main": [
+        [
+          {
+            "node": "Tag Source - TechCrunch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS - VentureBeat AI": {
+      "main": [
+        [
+          {
+            "node": "Tag Source - VentureBeat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS - The Verge AI": {
+      "main": [
+        [
+          {
+            "node": "Tag Source - The Verge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS - MIT Tech Review": {
+      "main": [
+        [
+          {
+            "node": "Tag Source - MIT Tech Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS - Google AI Blog": {
+      "main": [
+        [
+          {
+            "node": "Tag Source - Google AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS - OpenAI News": {
+      "main": [
+        [
+          {
+            "node": "Tag Source - OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag Source - TechCrunch": {
+      "main": [
+        [
+          {
+            "node": "Merge All Sources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag Source - VentureBeat": {
+      "main": [
+        [
+          {
+            "node": "Merge All Sources",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Tag Source - The Verge": {
+      "main": [
+        [
+          {
+            "node": "Merge All Sources",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Tag Source - MIT Tech Review": {
+      "main": [
+        [
+          {
+            "node": "Merge All Sources",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Tag Source - Google AI": {
+      "main": [
+        [
+          {
+            "node": "Merge All Sources",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    },
+    "Tag Source - OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Merge All Sources",
+            "type": "main",
+            "index": 5
+          }
+        ]
+      ]
+    },
+    "Filter - Last 24h": {
+      "main": [
+        [
+          {
+            "node": "Embed Article (Gemini)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed Article (Gemini)": {
+      "main": [
+        [
+          {
+            "node": "Check Semantic Dedup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Semantic Dedup": {
+      "main": [
+        [
+          {
+            "node": "Score & Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score & Merge": {
+      "main": [
+        [
+          {
+            "node": "Filter - Not Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter - Not Duplicate": {
+      "main": [
+        [
+          {
+            "node": "Sort by Relevance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sort by Relevance": {
+      "main": [
+        [
+          {
+            "node": "Limit Top Stories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Digest": {
+      "main": [
+        [
+          {
+            "node": "Send Digest Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Digest Email": {
+      "main": [
+        [
+          {
+            "node": "Prepare Sent Log Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Sent Log Items": {
+      "main": [
+        [
+          {
+            "node": "Upsert Sent Articles (Pinecone)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Append to Sent Articles Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS - MIT Algorithm": {
+      "main": [
+        [
+          {
+            "node": "Tag Source - MIT Algorithm",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag Source - MIT Algorithm": {
+      "main": [
+        [
+          {
+            "node": "Merge All Sources",
+            "type": "main",
+            "index": 6
+          }
+        ]
+      ]
+    },
+    "Limit Top Stories": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Top Stories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Top Stories": {
+      "main": [
+        [
+          {
+            "node": "Batch Summarize (Gemini)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Batch Summarize (Gemini)": {
+      "main": [
+        [
+          {
+            "node": "Parse Digest Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Digest Items": {
+      "main": [
+        [
+          {
+            "node": "Format Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timezone": "Asia/Karachi"
+  },
+  "meta": {},
+  "nodeGroups": [
+    {
+      "id": "cefdd854-c9d9-4258-a9a0-421fb14f4031",
+      "name": "1. Preferences (embed + prep)",
+      "nodeIds": [
+        "readPrefs",
+        "flattenPrefs",
+        "embedPref",
+        "collectPrefs"
+      ]
+    },
+    {
+      "id": "a55ab854-75eb-4972-ae1d-480b28c33542",
+      "name": "3. Dedup + Personalization Scoring",
+      "nodeIds": [
+        "merge1",
+        "filter24h",
+        "embedArticle",
+        "pineconeDedupQuery",
+        "scoreMerge",
+        "filterNotDup",
+        "sortRelevance",
+        "limitTop"
+      ]
+    },
+    {
+      "id": "85b49959-a9cd-49b8-aa13-3584a2e15c86",
+      "name": "4. Summarize + Send",
+      "nodeIds": [
+        "formatDigest",
+        "gmailSend"
+      ]
+    },
+    {
+      "id": "6af2b818-ef24-48ef-965f-dbaa0170ece3",
+      "name": "5. Log Sent Articles",
+      "nodeIds": [
+        "prepareLog",
+        "pineconeUpsert",
+        "sheetsAppend"
+      ]
+    }
+  ],
+  "tags": []
+}
