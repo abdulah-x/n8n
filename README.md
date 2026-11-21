@@ -27,6 +27,8 @@ VentureBeat, OpenAI, Google AI) → Merge → last-24h filter
 → log sent stories to Pinecone + Google Sheet
 ```
 
+Full design notes: [docs/daily-ai-news-digest-design.md](docs/daily-ai-news-digest-design.md)
+
 **Design choices**
 
 - **Semantic dedup with Pinecone.** Comparing embeddings catches the same story from different outlets, which URL matching misses.
