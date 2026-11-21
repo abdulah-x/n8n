@@ -6,6 +6,7 @@ A collection of self-hosted [n8n](https://n8n.io) workflow automation templates,
 
 | File | What it does |
 |---|---|
+| `ai-receptionist/` | Voice AI receptionist backend for Vapi: 9 workflows for booking, CRM and call logs (see below) |
 | `daily-ai-news-digest.json` | Emails a ranked, deduplicated AI news digest every morning (see below) |
 | `discord-ai-auto-moderator.json` | Scheduled AI moderation of Discord messages |
 | `gemini-chat-assistant.json` | Chat agent powered by Google Gemini |
@@ -42,6 +43,32 @@ VentureBeat, OpenAI, Google AI) → Merge → last-24h filter
    - `YOUR-PINECONE-INDEX-HOST.pinecone.io`: your index host
    - `YOUR_EMAIL@gmail.com`: where the digest is sent
 5. Attach your credentials to each node, run it once manually, then activate it.
+
+## AI Receptionist (Vapi + n8n)
+
+The backend for a voice AI receptionist, set up for a car-detailing business. A Vapi voice agent answers calls and uses n8n as its tools through an MCP server. It can book, look up, move and cancel appointments in Google Calendar, and keep client records and an appointment log in Google Sheets. When a call ends, a webhook writes a report to the call log.
+
+Adapted from [Nate Herk](https://www.youtube.com/@nateherk)'s AI receptionist tutorial.
+
+| File | Role |
+|---|---|
+| `vapi-mcp-server.json` | MCP server that exposes the 7 tool workflows below to Vapi |
+| `check-availability.json` | Checks free slots in Google Calendar |
+| `book-event.json` | Creates the calendar event and logs it to Sheets |
+| `lookup-appointment.json` | Finds a caller's existing appointment |
+| `update-appointment.json` | Moves an appointment and updates the log |
+| `delete-appointment.json` | Cancels an appointment and updates the log |
+| `client-lookup.json` | Finds a returning client in the CRM sheet |
+| `new-client-crm.json` | Adds a new client to the CRM sheet |
+| `hercules-receptionist-eoc-report.json` | End-of-call webhook that writes the call report to Sheets |
+
+**Setup**
+
+1. Import all 9 files. In `vapi-mcp-server.json`, point each tool node at your imported copy of that sub-workflow, because workflow IDs change on import.
+2. Create a Google Sheet with tabs `Clients`, `Appointment Log` and `Call Log`, then replace `YOUR_GOOGLE_SHEET_ID`.
+3. Replace `YOUR_CALENDAR_EMAIL@gmail.com` with the Google Calendar to book into.
+4. Attach your Google Calendar and Google Sheets credentials.
+5. In Vapi, add the MCP server URL as a tool, and set the end-of-call webhook to the EOC report URL.
 
 ## Usage
 
